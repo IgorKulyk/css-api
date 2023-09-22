@@ -5,16 +5,16 @@ app = Flask(__name__)
 api = Api(app)
 
 STUDENTS = {
-  '1': {'name': 'Mark', 'age': 23, 'spec': 'math'},
-  '2': {'name': 'Jane', 'age': 20, 'spec': 'biology'},
-  '3': {'name': 'Peter', 'age': 21, 'spec': 'history'},
-  '4': {'name': 'Kate', 'age': 22, 'spec': 'science'},
+    '1': {'name': 'Mark', 'age': 23, 'spec': 'math'},
+    '2': {'name': 'Jane', 'age': 20, 'spec': 'biology'},
+    '3': {'name': 'Peter', 'age': 21, 'spec': 'history'},
+    '4': {'name': 'Kate', 'age': 22, 'spec': 'science'},
 }
+
 
 class StudentList(Resource):
     def get(self):
         return STUDENTS
-
 
     def post(self):
         parser = reqparse.RequestParser()
@@ -31,9 +31,8 @@ class StudentList(Resource):
         }
         return STUDENTS[student_id], 201
 
+
 api.add_resource(StudentList, '/students/')
-
-
 
 if __name__ == "__main__":
     app.run(debug=True)
