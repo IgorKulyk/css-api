@@ -1,38 +1,49 @@
-from flask import Flask
-from flask_restful import Resource, Api, reqparse
+from flask import Flask, jsonify, request
+
+from application.worker import Worker
+from core.base_alg_object import BaseAlgObject
 
 app = Flask(__name__)
-api = Api(app)
-
-STUDENTS = {
-    '1': {'name': 'Mark', 'age': 23, 'spec': 'math'},
-    '2': {'name': 'Jane', 'age': 20, 'spec': 'biology'},
-    '3': {'name': 'Peter', 'age': 21, 'spec': 'history'},
-    '4': {'name': 'Kate', 'age': 22, 'spec': 'science'},
-}
+app.config['SECRET_KEY'] = 'css-secret-key'
 
 
-class StudentList(Resource):
-    def get(self):
-        return STUDENTS
+class Main:
+    # Simulated user data (for simplicity)
+    logger = BaseAlgObject.logger
+    logger.info(f'Starting CSS App')
+    worker = Worker()
+    session = {}
 
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name")
-        parser.add_argument("age")
-        parser.add_argument("spec")
-        args = parser.parse_args()
-        student_id = int(max(STUDENTS.keys())) + 1
-        student_id = '%i' % student_id
-        STUDENTS[student_id] = {
-            "name": args["name"],
-            "age": args["age"],
-            "spec": args["spec"],
-        }
-        return STUDENTS[student_id], 201
+    @classmethod
+    def start(cls):
+        cls.worker.init()
+        app.run(debug=True)
 
 
-api.add_resource(StudentList, '/students/')
+@app.route('/login', methods=['POST'])
+def login():
+    # result = {'status': 'ok', 'message': ''}
+    if request.method == 'POST':
+        result = Main.worker.get_sms_templates()
+        return jsonify(result)
 
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.route('/sms_templates', methods=['GET'])
+def sms_templates():
+    # result = {'status': 'ok', 'message': ''}
+    if request.method == 'GET':
+        result = Main.worker.get_sms_templates()
+        return jsonify(result)
+
+
+@app.route('/user', methods=['POST'])
+def user():
+    # result = {'status': 'ok', 'message': ''}
+    user_data = request.json
+    print(f"user data: {user_data}")
+    if request.method == 'POST':
+        result = Main.worker.create_user(user_data)
+        return jsonify(result)
+
+
+if __name__ == '__main__':
+    Main.start()

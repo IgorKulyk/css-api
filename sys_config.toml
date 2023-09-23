@@ -1,0 +1,11 @@
+# Car Ship Simple system configuration
+
+[General]
+app_name = 'Car Ship Simple'
+
+
+[DB]
+user='sentinel'
+password='318655tissot'
+server='localhost'
+db_name = 'car_ship_simple'

@@ -1,73 +1,112 @@
+import hashlib
+import hmac
+import os
+from datetime import datetime
+from typing import Tuple
+
+import mysql
 import mysql.connector
-from mysql.connector import errorcode
+from mysql.connector import MySQLConnection
+
+from core.base_alg_object import BaseAlgObject
 
 
-class DBException(Exception):
+def hash_new_password(password: str) -> Tuple[bytes, bytes]:
+    """
+    Hash the provided password with a randomly-generated salt and return the
+    salt and hash to store in the database.
+    """
+    salt = os.urandom(16)
+    pw_hash = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+    return salt, pw_hash
+
+
+def is_correct_password(salt: bytes, pw_hash: bytes, password: str) -> bool:
+    """
+    Given a previously-stored salt and hash, and a password provided by a user
+    trying to log in, check whether the password is correct.
+    """
+    return hmac.compare_digest(
+        pw_hash,
+        hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+    )
+
+class SQLDBException(Exception):
     pass
 
 
 def db_call(function):
     def wrapper(cls, *args, **kwargs):
         try:
-            res = function(cls, *args, **kwargs)
-        except mysql.connector.Error as ex:
-            error = f"mysql.connector.Error call exception: {str(ex)}"
-            print(error)
-            raise DBException(error)
+            if DBInstance.is_connected():
+                res = function(cls, *args, **kwargs)
+            else:
+                raise SQLDBException("DBInstance is not connected")
+        except Exception as ex:
+            BaseAlgObject.logger.exception(ex)
+            raise SQLDBException(ex)
         return res
-
     return wrapper
 
 
 class DBInstance:
-    connection_data = {
-        'user': 'sentinel',
-        'password': '318655tissot',
-        'host': 'localhost',
-        'database': 'car_ship_simple',
-        'raise_on_warning': True,
+    db_config = BaseAlgObject.config['DB']
+    connect_info = {
+        'host': db_config['server'], 'database': db_config['db_name'],
+        'user': db_config['user'], 'password': db_config['password'],
+        'raise_on_warnings': True,
         'auth_plugin': 'mysql_native_password'
     }
-    db = None
+    connection: MySQLConnection = None
     cursor = None
 
     @classmethod
-    @db_call
     def connect(cls):
-        if cls.db is None:
-            try:
-                cls.db = mysql.connector.connect(**cls.connection_data)
-                cls.cursor = cls.db.cursor()
-            except mysql.connector.Error as ex:
-                if ex.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-                    print("Wrong DB username or password")
-                elif ex.errno == errorcode.ER_BAD_DB_ERROR:
-                    print("DB does not exist")
-                else:
-                    print(f"DB unhandled exception: {ex}")
-
-    @classmethod
-    @db_call
-    def disconnect(cls):
-        if cls.db is not None:
-            cls.cursor.close()
-            cls.cursor = None
-            cls.db.close()
-            cls.db = None
-
-    @classmethod
-    @db_call
-    def execute_sql(cls, sql_cmd: str):
         try:
-            cls.cursor = cls.db.cursor()
-            res = cls.cursor.execute(sql_cmd)
-        except mysql.connector.Error as ex:
-            raise DBException(f"DBInstance execute_sql exception: sql={sql_cmd}, ex= {ex}")
-        return res
+            cls.connection = mysql.connector.connect(**cls.connect_info)
+            cls.cursor = cls.connection.cursor()
+        except Exception as ex:
+            cls.generate_exception("connect", ex)
+
+    @classmethod
+    def disconnect(cls):
+        try:
+            cls.cursor.close()
+            cls.connection.close()
+        except Exception as ex:
+            cls.generate_exception("disconnect", ex)
+
+    @classmethod
+    def is_connected(cls):
+        return cls.connection is not None and cls.cursor is not None
+
+    @staticmethod
+    def generate_exception(info: str, exception: Exception):
+        line = f"@@@ SQL DB Exception in {info}"
+        BaseAlgObject.logger.error(line)
+        BaseAlgObject.logger.error(f'exception: {exception}')
+        raise SQLDBException(line)
 
     @classmethod
     @db_call
-    def insert(cls, table_name: str, fields_val_dict: dict):
+    def execute_sql(cls, sql_cmd: str) -> list:
+        try:
+            res = cls.cursor.execute(sql_cmd)
+            res = cls.cursor.fetchall()
+            results = []
+            for index, value in enumerate(res):
+                record_data = {
+                    DBInstance.cursor.description[i][0]: value[i] for i in range(len(value))
+                }
+                results.append(record_data)
+        except Exception as ex:
+            results = None
+            cls.generate_exception(f"execute_sql: {sql_cmd}", ex)
+        return results
+
+    @classmethod
+    @db_call
+    def insert(cls, table_name: str, fields_val_dict: dict) -> int:
         field_names = ""
         for field_name in fields_val_dict.keys():
             field_names += f"{field_name}, "
@@ -76,13 +115,25 @@ class DBInstance:
         for value in fields_val_dict.values():
             if type(value) == str:
                 field_values += f"'{value}', "
+            elif type(value) == datetime:
+                field_values += f"'{value}', "
             else:
                 field_values += f"{value}, "
         field_values = field_values[:-2]
         sql_cmd = f"INSERT INTO {table_name} ({field_names}) VALUES ({field_values})"
-        cls.execute_sql(sql_cmd)
+        cls.cursor.execute(sql_cmd)
+        cls.connection.commit()
         item_id = cls.cursor.lastrowid
-        cls.db.commit()
+        return item_id
+
+    @classmethod
+    @db_call
+    def update_user_password(cls, user_id: int, password: str) -> int:
+        password_salt, password_hash = hash_new_password(password)
+        sql_cmd = '''UPDATE users SET password_hash = _binary %s, password_salt = _binary %s WHERE idusers = %s'''
+        cls.cursor.execute(sql_cmd, (password_hash, password_salt, user_id))
+        cls.connection.commit()
+        item_id = cls.cursor.lastrowid
         return item_id
 
     @classmethod
@@ -110,15 +161,12 @@ class DBInstance:
 
     @classmethod
     @db_call
-    def select(cls, table_name: str, where_clause: str, order_by: str = None):
-        sql_cmd = f"SELECT * FROM {table_name} WHERE {where_clause}"
+    def select(cls, table_name: str, where_clause: str = None, order_by: str = None):
+        sql_cmd = f"SELECT * FROM {table_name}"
+        if where_clause is not None:
+            sql_cmd += f" WHERE {where_clause}"
         if order_by is not None:
             sql_cmd += f" ORDER BY {order_by}"
-        # res = cls.execute_sql(sql_cmd)
-        fetch_records = cls.cursor.fetchall()
-        fetch_records = list(fetch_records)
-        records = []
-        for index, value in enumerate(fetch_records):
-            record_data = {DBInstance.cursor.description[i][0]: value[i] for i in range(len(value))}
-            records.append(record_data)
-        return records
+        print(f"SQL QUERY: {sql_cmd}")
+        res = cls.execute_sql(sql_cmd)
+        return res
