@@ -9,3 +9,6 @@ user='sentinel'
 password='318655tissot'
 server='localhost'
 db_name = 'car_ship_simple'
+
+[Security]
+token_secret='!@#$%^&*super_top_secret1234567890?>'

@@ -1,5 +1,4 @@
 import hashlib
-import hmac
 import os
 from datetime import datetime
 from typing import Tuple
@@ -20,16 +19,6 @@ def hash_new_password(password: str) -> Tuple[bytes, bytes]:
     pw_hash = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
     return salt, pw_hash
 
-
-def is_correct_password(salt: bytes, pw_hash: bytes, password: str) -> bool:
-    """
-    Given a previously-stored salt and hash, and a password provided by a user
-    trying to log in, check whether the password is correct.
-    """
-    return hmac.compare_digest(
-        pw_hash,
-        hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
-    )
 
 class SQLDBException(Exception):
     pass
@@ -106,7 +95,7 @@ class DBInstance:
 
     @classmethod
     @db_call
-    def insert(cls, table_name: str, fields_val_dict: dict) -> int:
+    def insert(cls, table_name: str, fields_val_dict: dict) -> dict:
         field_names = ""
         for field_name in fields_val_dict.keys():
             field_names += f"{field_name}, "
@@ -121,10 +110,13 @@ class DBInstance:
                 field_values += f"{value}, "
         field_values = field_values[:-2]
         sql_cmd = f"INSERT INTO {table_name} ({field_names}) VALUES ({field_values})"
-        cls.cursor.execute(sql_cmd)
-        cls.connection.commit()
-        item_id = cls.cursor.lastrowid
-        return item_id
+        try:
+            cls.cursor.execute(sql_cmd)
+            cls.connection.commit()
+            item_id = cls.cursor.lastrowid
+            return {'status': 'ok', 'idusers': item_id}
+        except Exception as ex:
+            return {'status': 'error', 'message': str(ex)}
 
     @classmethod
     @db_call
@@ -133,8 +125,7 @@ class DBInstance:
         sql_cmd = '''UPDATE users SET password_hash = _binary %s, password_salt = _binary %s WHERE idusers = %s'''
         cls.cursor.execute(sql_cmd, (password_hash, password_salt, user_id))
         cls.connection.commit()
-        item_id = cls.cursor.lastrowid
-        return item_id
+        return user_id
 
     @classmethod
     @db_call
