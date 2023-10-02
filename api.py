@@ -1,4 +1,6 @@
-from flask import Flask, jsonify, request
+import base64
+
+from flask import Flask, jsonify, request, make_response
 
 from application.worker import Worker
 from core.base_alg_object import BaseAlgObject
@@ -26,7 +28,6 @@ def login():
     password = request.json['password']
     if request.method == 'POST':
         result = Main.worker.login(username, password)
-        print(f"result {result}")
         return jsonify(result)
 
 
@@ -35,17 +36,37 @@ def sms_templates():
     if request.method == 'GET':
         authorization_header = request.headers.get('Authorization')
         token_res = TokenHelper.check_token(authorization_header[7:])
-        if token_res['status'] is not 'ok':
+        if token_res['status'] != 'ok':
             return jsonify(token_res)
         else:
             result = Main.worker.get_sms_templates()
             return jsonify(result)
 
 
+@app.route('/pdf_templates', methods=['GET', 'POST'])
+def pdf_templates():
+    authorization_header = request.headers.get('Authorization')
+    token_res = TokenHelper.check_token(authorization_header[7:])
+    if token_res['status'] != 'ok':
+        return jsonify(token_res)
+    else:
+        if request.method == 'GET':
+            result = Main.worker.get_pdf_templates()
+            for file in result:
+                file['template_data'] = file['template_data'].decode()
+            return jsonify(result)
+        if request.method == 'POST':
+            file = request.files['file']
+            file_bytes = file.read()
+            file_name = file.filename
+            if file_name != '':
+                result = Main.worker.create_pdf_template(file_name, file_bytes)
+                return jsonify(result)
+
+
 @app.route('/user', methods=['POST'])
 def user():
     user_data = request.json
-    print(f"user data: {user_data}")
     if request.method == 'POST':
         result = Main.worker.create_user(user_data)
         return jsonify(result)

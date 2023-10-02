@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import os
 from datetime import datetime
@@ -6,6 +7,7 @@ from typing import Tuple
 import mysql
 import mysql.connector
 from mysql.connector import MySQLConnection
+from werkzeug.datastructures import FileStorage
 
 from core.base_alg_object import BaseAlgObject
 
@@ -129,6 +131,20 @@ class DBInstance:
 
     @classmethod
     @db_call
+    def insert_file(cls, file_name: str, file_bytes: bytes) -> dict:
+        encoded_file = base64.b64encode(file_bytes)
+        query = f'INSERT INTO pdf_templates (template_name, template_data) VALUES(%s, %s)'
+        arguments = (file_name, encoded_file)
+        try:
+            cls.cursor.execute(query, arguments)
+            cls.connection.commit()
+            item_id = cls.cursor.lastrowid
+            return {'status': 'ok', 'idpdf_templates': item_id}
+        except Exception as ex:
+            return {'status': 'error', 'message': str(ex)}
+
+    @classmethod
+    @db_call
     def delete(cls, table_name: str, where_clause: str):
         sql_cmd = f"DELETE FROM {table_name} WHERE {where_clause}"
         res = cls.execute_sql(sql_cmd)
@@ -158,6 +174,5 @@ class DBInstance:
             sql_cmd += f" WHERE {where_clause}"
         if order_by is not None:
             sql_cmd += f" ORDER BY {order_by}"
-        print(f"SQL QUERY: {sql_cmd}")
         res = cls.execute_sql(sql_cmd)
         return res
