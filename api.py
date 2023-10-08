@@ -64,6 +64,19 @@ def pdf_templates():
                 return jsonify(result)
 
 
+@app.route('/filled_pdf_template/<template_id>', methods=['POST'])
+def filled_pdf_template(template_id):
+    authorization_header = request.headers.get('Authorization')
+    token_res = TokenHelper.check_token(authorization_header[7:])
+    if token_res['status'] != 'ok':
+        return jsonify(token_res)
+    else:
+        if request.method == 'POST':
+            form_data = request.json
+            result = Main.worker.fill_pdf_templates(template_id, form_data)
+            return jsonify(result)
+
+
 @app.route('/user', methods=['POST'])
 def user():
     user_data = request.json
