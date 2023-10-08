@@ -3,11 +3,11 @@
 [General]
 app_name = 'Car Ship Simple'
 
-
 [DB]
 user='sentinel'
 password='318655tissot'
 server='localhost'
+port='3306'
 db_name = 'car_ship_simple'
 
 [Security]

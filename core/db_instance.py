@@ -43,8 +43,11 @@ def db_call(function):
 class DBInstance:
     db_config = BaseAlgObject.config['DB']
     connect_info = {
-        'host': db_config['server'], 'database': db_config['db_name'],
-        'user': db_config['user'], 'password': db_config['password'],
+        'host': db_config['server'],
+        'port': db_config['port'],
+        'database': db_config['db_name'],
+        'user': db_config['user'],
+        'password': db_config['password'],
         'raise_on_warnings': True,
         'auth_plugin': 'mysql_native_password'
     }
