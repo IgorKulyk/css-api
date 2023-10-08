@@ -178,7 +178,7 @@ class Worker:
         gen.merge()
 
         # for testing purposes
-        gen.generate("Output.pdf")
+        # gen.generate("Output.pdf")
 
         generated_bytes = gen.return_bytes()
         encoded_file = base64.b64encode(generated_bytes)
