@@ -1,9 +1,10 @@
 import base64
 
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify, request, make_response, g
 
 from application.worker import Worker
 from core.base_alg_object import BaseAlgObject
+from core.db_instance import DBInstance
 from core.token_helper import TokenHelper
 
 app = Flask(__name__)
@@ -20,6 +21,17 @@ class Main:
     def start(cls):
         cls.worker.init()
         app.run(debug=True)
+
+
+@app.before_request
+def db_connect():
+    g.db = DBInstance
+    g.db.connect()
+
+
+@app.teardown_request
+def db_disconnect(exception=None):
+    g.db.disconnect()
 
 
 @app.route('/login', methods=['POST'], )

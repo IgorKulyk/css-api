@@ -33,7 +33,7 @@ class Worker:
 
     def init(self):
         self.logger.debug('connecting to the DB')
-        DBInstance.connect()
+        # DBInstance.connect()
         self.logger.debug('worker is ready')
 
     # application api
