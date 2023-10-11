@@ -1,6 +1,5 @@
-import base64
-
-from flask import Flask, jsonify, request, make_response, g
+from flask import Flask, jsonify, request, g
+from flask_cors import CORS
 
 from application.worker import Worker
 from core.base_alg_object import BaseAlgObject
@@ -8,6 +7,7 @@ from core.db_instance import DBInstance
 from core.token_helper import TokenHelper
 
 app = Flask(__name__)
+cors = CORS(app, origins='*')
 app.config['SECRET_KEY'] = 'css-secret-key'
 
 
