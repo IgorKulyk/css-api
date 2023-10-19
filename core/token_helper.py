@@ -11,7 +11,7 @@ class TokenHelper:
     @classmethod
     def create_token(cls, user: dict) -> str:
         now = datetime.now(tz=timezone.utc)
-        expires = now + timedelta(days=1)
+        expires = now + timedelta(days=7)
         token = jwt.encode({
             "idusers": user['idusers'],
             "iat": now,
