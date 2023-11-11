@@ -34,13 +34,26 @@ def db_disconnect(exception=None):
     g.db.disconnect()
 
 
-@app.route('/login', methods=['POST'], )
+@app.route('/login', methods=['POST'])
 def login():
     username = request.json['username']
     password = request.json['password']
     if request.method == 'POST':
         result = Main.worker.login(username, password)
         return jsonify(result)
+
+
+@app.route('/update_token', methods=['POST'])
+def update_token():
+    authorization_header = request.headers.get('Authorization')
+    token_res = TokenHelper.check_token(authorization_header[7:])
+    if token_res['status'] != 'ok':
+        return jsonify(token_res)
+    else:
+        username = request.json['username']
+        if request.method == 'POST':
+            result = Main.worker.update_token(username)
+            return jsonify(result)
 
 
 @app.route('/sms_templates', methods=['GET'])

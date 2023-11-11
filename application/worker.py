@@ -2,15 +2,8 @@ import base64
 import hashlib
 import hmac
 from datetime import datetime
-from io import BytesIO
-
-import PyPDF2
-from reportlab.lib.colors import black, gray
-from reportlab.pdfgen import canvas
-
 from application.sql_helper import SQLHelper
 from core.base_alg_object import BaseAlgObject
-from core.db_instance import DBInstance
 from core.pdf_helper import GenerateFromTemplate
 from core.token_helper import TokenHelper
 
@@ -58,7 +51,9 @@ class Worker:
         assigned_user = None
 
         for user in users:
-            if f"{user['first_name'].strip()} {user['last_name'].strip()}" == form_data['assignedUserName'] or f"{user['last_name'].strip()} {user['first_name'].strip()}" == form_data['assignedUserName']:
+            if f"{user['first_name'].strip()} {user['last_name'].strip()}" == form_data[
+                'assignedUserName'] or f"{user['last_name'].strip()} {user['first_name'].strip()}" == form_data[
+                'assignedUserName']:
                 assigned_user = user
 
         vehicle_inop = vehicle_data['vehicleInop']
@@ -68,7 +63,7 @@ class Worker:
         else:
             vehicle_run = 'Yes'
 
-        if res['template_name'] == 'Carshipsimple LLC Order Receipt.pdf':
+        if res['template_name'] == 'CarShipSimple LLC Order Receipt.pdf':
             # For Order Receipt
             # Header
             gen.add_text(form_data['orderId'], (80, 762))  # Order#
@@ -112,11 +107,14 @@ class Worker:
             gen.add_text(form_data['originCity'], (130, 180))  # Origin City
             gen.add_text(form_data['destinationCity'], (380, 180))  # Destination City
             gen.add_text(f"{form_data['originState']} {form_data['originZip']}", (130, 167))  # Origin State/Zip
-            gen.add_text(f"{form_data['destinationState']} {form_data['destinationZip']}", (380, 167))  # Destination State/Zip
+            gen.add_text(f"{form_data['destinationState']} {form_data['destinationZip']}",
+                         (380, 167))  # Destination State/Zip
             gen.add_text(form_data['originCountry'], (130, 153))  # Origin Country
             gen.add_text(form_data['destinationCountry'], (380, 153))  # Destination Country
             # Vehicle Information
-            gen.add_text(f"{vehicle_data['vehicleModelYear']} {vehicle_data['vehicleMake']} {vehicle_data['vehicleModel']}", (43, 105))  # Year/Make/Model
+            gen.add_text(
+                f"{vehicle_data['vehicleModelYear']} {vehicle_data['vehicleMake']} {vehicle_data['vehicleModel']}",
+                (43, 105))  # Year/Make/Model
             gen.add_text(vehicle_data['vehicleType'], (223, 105))  # Type
             gen.add_text("-", (261, 105))  # Color
             gen.add_text(vehicle_data['vehiclePlateNumber'], (293, 105))  # Lic. Plate
@@ -124,7 +122,7 @@ class Worker:
             gen.add_text(vehicle_data['vehicleLotNumber'], (422, 105))  # Lot#
             gen.add_text(form_data['totalTariff'], (500, 105))  # Tariff
 
-        elif res['template_name'] == 'Carshipsimple LLC Shipping Order Form.pdf':
+        elif res['template_name'] == 'CarShipSimple LLC Shipping Order Form.pdf':
             # For Shipping Order Form
             # Header
             gen.add_text(form_data['assignedUserName'], (295, 632))  # Agent
@@ -163,11 +161,14 @@ class Worker:
             gen.add_text(form_data['originCity'], (130, 171))  # Origin City
             gen.add_text(form_data['destinationCity'], (380, 171))  # Destination City
             gen.add_text(f"{form_data['originState']} {form_data['originZip']}", (130, 157))  # Origin State/Zip
-            gen.add_text(f"{form_data['destinationState']} {form_data['destinationZip']}", (380, 157))  # Destination State/Zip
+            gen.add_text(f"{form_data['destinationState']} {form_data['destinationZip']}",
+                         (380, 157))  # Destination State/Zip
             gen.add_text(form_data['originCountry'], (130, 144))  # Origin Country
             gen.add_text(form_data['destinationCountry'], (380, 144))  # Destination Country
             # Vehicle Information
-            gen.add_text(f"{vehicle_data['vehicleModelYear']} {vehicle_data['vehicleMake']} {vehicle_data['vehicleModel']}", (43, 96))  # Year/Make/Model
+            gen.add_text(
+                f"{vehicle_data['vehicleModelYear']} {vehicle_data['vehicleMake']} {vehicle_data['vehicleModel']}",
+                (43, 96))  # Year/Make/Model
             gen.add_text(vehicle_data['vehicleType'], (223, 96))  # Type
             gen.add_text("-", (261, 96))  # Color
             gen.add_text(vehicle_data['vehiclePlateNumber'], (293, 96))  # Lic. Plate
@@ -189,7 +190,7 @@ class Worker:
         password = user_data.pop('password')
         user_data['create_date'] = datetime.now()
         result = SQLHelper.create_user(user_data, password)
-        if result['status'] is not 'ok':
+        if result['status'] != 'ok':
             return result
         else:
             response = result['result']
@@ -199,7 +200,7 @@ class Worker:
 
     def login(self, username: str, password: str) -> dict:
         response = SQLHelper.get_user_by_username(username)
-        if response['status'] is not 'ok':
+        if response['status'] != 'ok':
             return {'status': 'error', 'message': response['message']}
         else:
             user = response['result']
@@ -217,6 +218,15 @@ class Worker:
                     'contact_email': user['contact_email']
                 }
                 return {'status': 'ok', 'user': logged_in_user, 'token': token}
+
+    def update_token(self, username: str) -> dict:
+        response = SQLHelper.get_user_by_username(username)
+        if response['status'] != 'ok':
+            return {'status': 'error', 'message': response['message']}
+        else:
+            user = response['result']
+            token = TokenHelper.create_token(user)
+            return {'status': 'ok', 'token': token}
 
     def create_pdf_template(self, file_name: str, file_bytes: bytes) -> dict:
         result = SQLHelper.create_pdf_template(file_name, file_bytes)
