@@ -63,7 +63,7 @@ class Worker:
         else:
             vehicle_run = 'Yes'
 
-        if res['template_name'] == 'CarShipSimple LLC Order Receipt.pdf':
+        if res['template_name'] == 'Carshipsimple LLC Order Receipt.pdf':
             # For Order Receipt
             # Header
             gen.add_text(form_data['orderId'], (80, 762))  # Order#
@@ -122,7 +122,7 @@ class Worker:
             gen.add_text(vehicle_data['vehicleLotNumber'], (422, 105))  # Lot#
             gen.add_text(form_data['totalTariff'], (500, 105))  # Tariff
 
-        elif res['template_name'] == 'CarShipSimple LLC Shipping Order Form.pdf':
+        elif res['template_name'] == 'Carshipsimple LLC Shipping Order Form.pdf':
             # For Shipping Order Form
             # Header
             gen.add_text(form_data['assignedUserName'], (295, 632))  # Agent
