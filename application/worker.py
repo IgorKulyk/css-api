@@ -19,6 +19,16 @@ def is_correct_password(salt: bytes, pw_hash: bytes, password: str) -> bool:
     )
 
 
+def get_vehicle_inop_string(vehicles_list) -> str:
+    vehicle_run_list = []
+    for i in vehicles_list:
+        if vehicles_list[i]['vehicleInop'] == 1:
+            vehicle_run_list.append('No')
+        else:
+            vehicle_run_list.append('Yes')
+    return ', '.join(vehicle_run_list)
+
+
 class Worker:
     def __init__(self):
         self.logger = BaseAlgObject.logger
@@ -42,11 +52,12 @@ class Worker:
     def fill_pdf_templates(self, template_id: int, form_data: dict) -> dict:
         res = SQLHelper.get_by_id('pdf_templates', 'idpdf_templates', template_id)
         gen = GenerateFromTemplate(res['template_data'])
+        vehicle_new_line_step = 10
 
         # for testing purposes
         # gen.draw_grid()
 
-        vehicle_data = form_data['cars']['0']
+        vehicles_list = form_data['cars']
         users = form_data['users']
         assigned_user = None
 
@@ -55,13 +66,6 @@ class Worker:
                 'assignedUserName'] or f"{user['last_name'].strip()} {user['first_name'].strip()}" == form_data[
                 'assignedUserName']:
                 assigned_user = user
-
-        vehicle_inop = vehicle_data['vehicleInop']
-        vehicle_run = None
-        if vehicle_inop == 1:
-            vehicle_run = 'No'
-        else:
-            vehicle_run = 'Yes'
 
         if res['template_name'] == 'Carshipsimple LLC Order Receipt.pdf':
             # For Order Receipt
@@ -90,7 +94,7 @@ class Worker:
             gen.add_text(form_data['PickupDate'], (315, 419))  # Est. Pickup Date
             gen.add_text(form_data['DeliveryDate'], (315, 406))  # Est. Delivery Date
             gen.add_text(form_data['shipVia'], (315, 393))  # Ship Via
-            gen.add_text(vehicle_run, (315, 381))  # Vehicle(s) Run
+            gen.add_text(get_vehicle_inop_string(vehicles_list), (315, 381))  # Vehicle(s) Run
             # Payment Received
             gen.add_text("Payment Received", (100, 328))  # Payment Received status
             # Transit Directives
@@ -112,15 +116,19 @@ class Worker:
             gen.add_text(form_data['originCountry'], (130, 153))  # Origin Country
             gen.add_text(form_data['destinationCountry'], (380, 153))  # Destination Country
             # Vehicle Information
-            gen.add_text(
-                f"{vehicle_data['vehicleModelYear']} {vehicle_data['vehicleMake']} {vehicle_data['vehicleModel']}",
-                (43, 105))  # Year/Make/Model
-            gen.add_text(vehicle_data['vehicleType'], (223, 105))  # Type
-            gen.add_text("-", (261, 105))  # Color
-            gen.add_text(vehicle_data['vehiclePlateNumber'], (293, 105))  # Lic. Plate
-            gen.add_text(vehicle_data['vehicleVin'], (336, 105))  # VIN
-            gen.add_text(vehicle_data['vehicleLotNumber'], (422, 105))  # Lot#
-            gen.add_text(form_data['totalTariff'], (500, 105))  # Tariff
+            for key in vehicles_list:
+                gen.add_text(
+                    f"{vehicles_list[key]['vehicleModelYear']} {vehicles_list[key]['vehicleMake']} {vehicles_list[key]['vehicleModel']}",
+                    (43, (105-(int(key)*vehicle_new_line_step))))  # Year/Make/Model
+                gen.add_text(vehicles_list[key]['vehicleType'], (223, (105-(int(key)*vehicle_new_line_step))))  # Type
+                gen.add_text("-", (261, (105-(int(key)*vehicle_new_line_step))))  # Color
+                gen.add_text(vehicles_list[key]['vehiclePlateNumber'], (293, (105-(int(key)*vehicle_new_line_step))))  # Lic. Plate
+                gen.add_text(vehicles_list[key]['vehicleVin'], (336, (105-(int(key)*vehicle_new_line_step))))  # VIN
+                gen.add_text(vehicles_list[key]['vehicleLotNumber'], (422, (105-(int(key)*vehicle_new_line_step))))  # Lot#
+                if int(key) == 0:
+                    gen.add_text(form_data['totalTariff'], (500, (105-(int(key)*vehicle_new_line_step))))  # Tariff
+                else:
+                    gen.add_text(f"$ {form_data['totalTariff']}", (494, (105-(int(key)*vehicle_new_line_step))))  # Tariff
 
         elif res['template_name'] == 'Carshipsimple LLC Shipping Order Form.pdf':
             # For Shipping Order Form
@@ -146,7 +154,7 @@ class Worker:
             gen.add_text(form_data['totalTariff'], (320, 368))  # Calculated Rate
             gen.add_text(form_data['firstPickupDate'], (315, 355))  # 1st Avail Date
             gen.add_text(form_data['shipVia'], (315, 342))  # Ship Via
-            gen.add_text(vehicle_run, (315, 330))  # Vehicle(s) Run
+            gen.add_text(get_vehicle_inop_string(vehicles_list), (315, 330))  # Vehicle(s) Run
             # Transit Directives
             gen.add_text(form_data['originContactName'], (130, 237))  # Origin Name
             gen.add_text(form_data['destinationContactName'], (380, 237))  # Destination Name
@@ -166,20 +174,24 @@ class Worker:
             gen.add_text(form_data['originCountry'], (130, 144))  # Origin Country
             gen.add_text(form_data['destinationCountry'], (380, 144))  # Destination Country
             # Vehicle Information
-            gen.add_text(
-                f"{vehicle_data['vehicleModelYear']} {vehicle_data['vehicleMake']} {vehicle_data['vehicleModel']}",
-                (43, 96))  # Year/Make/Model
-            gen.add_text(vehicle_data['vehicleType'], (223, 96))  # Type
-            gen.add_text("-", (261, 96))  # Color
-            gen.add_text(vehicle_data['vehiclePlateNumber'], (293, 96))  # Lic. Plate
-            gen.add_text(vehicle_data['vehicleVin'], (336, 96))  # VIN
-            gen.add_text(vehicle_data['vehicleLotNumber'], (422, 96))  # Lot#
-            gen.add_text(form_data['totalTariff'], (500, 96))  # Tariff
+            for key in vehicles_list:
+                gen.add_text(
+                    f"{vehicles_list[key]['vehicleModelYear']} {vehicles_list[key]['vehicleMake']} {vehicles_list[key]['vehicleModel']}",
+                    (43, (96-(int(key)*vehicle_new_line_step))))  # Year/Make/Model
+                gen.add_text(vehicles_list[key]['vehicleType'], (223, (96-(int(key)*vehicle_new_line_step))))  # Type
+                gen.add_text("-", (261, (96-(int(key)*vehicle_new_line_step))))  # Color
+                gen.add_text(vehicles_list[key]['vehiclePlateNumber'], (293, (96-(int(key)*vehicle_new_line_step))))  # Lic. Plate
+                gen.add_text(vehicles_list[key]['vehicleVin'], (336, (96-(int(key)*vehicle_new_line_step))))  # VIN
+                gen.add_text(vehicles_list[key]['vehicleLotNumber'], (422, (96-(int(key)*vehicle_new_line_step))))  # Lot#
+                if int(key) == 0:
+                    gen.add_text(form_data['totalTariff'], (500, (96-(int(key)*vehicle_new_line_step))))  # Tariff
+                else:
+                    gen.add_text(f"$ {form_data['totalTariff']}", (494, (96-(int(key)*vehicle_new_line_step))))  # Tariff
 
         gen.merge()
 
         # for testing purposes
-        # gen.generate("Output.pdf")
+        gen.generate("Output.pdf")
 
         generated_bytes = gen.return_bytes()
         encoded_file = base64.b64encode(generated_bytes)
